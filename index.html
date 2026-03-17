@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Time</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #ffffff;
+    color: #111;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top bar */
+  .topbar {
+    padding: 20px 36px 16px;
+    border-bottom: 1px solid #e8e8e8;
+  }
+
+  .topbar h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #111;
+    letter-spacing: -0.3px;
+  }
+
+  /* Main layout */
+  .main {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    padding: 48px 36px 36px;
+    gap: 40px;
+  }
+
+  /* Left: question panel */
+  .question-panel {
+    width: 280px;
+    flex-shrink: 0;
+    padding-top: 8px;
+  }
+
+  .question-panel h2 {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 14px;
+    color: #111;
+  }
+
+  .question-panel p {
+    font-size: 16px;
+    font-weight: 400;
+    color: #222;
+    line-height: 1.55;
+  }
+
+  /* Right: options + explanation */
+  .right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* 2x2 option grid */
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 0;
+  }
+
+  .option-card {
+    background: #7b5ea7;
+    border-radius: 16px;
+    padding: 20px 20px 22px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.12s;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 3px solid transparent;
+    user-select: none;
+  }
+
+  .option-card:hover:not(.locked) {
+    background: #6a4f96;
+    transform: translateY(-2px);
+  }
+
+  .option-card .letter {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 16px;
+  }
+
+  .option-card .text {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111;
+    line-height: 1.35;
+  }
+
+  /* States */
+  .option-card.correct {
+    background: #2d9e5f !important;
+    border-color: #1f7a47;
+  }
+
+  .option-card.wrong {
+    background: #d94040 !important;
+    border-color: #b02f2f;
+  }
+
+  .option-card.locked {
+    cursor: default;
+    transform: none !important;
+  }
+
+  /* Explanation strip */
+  .explanation-strip {
+    display: none;
+    margin-top: 16px;
+    background: #f5f5f5;
+    border-left: 4px solid #7b5ea7;
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px;
+    animation: slideDown 0.3s ease both;
+  }
+
+  .explanation-strip.correct-strip { border-left-color: #2d9e5f; }
+  .explanation-strip.wrong-strip   { border-left-color: #d94040; }
+  .explanation-strip.show          { display: block; }
+
+  .explanation-strip .exp-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 6px;
+  }
+
+  .explanation-strip .exp-text {
+    font-size: 14px;
+    color: #333;
+    line-height: 1.65;
+    font-weight: 400;
+  }
+
+  /* Bottom nav */
+  .bottombar {
+    padding: 16px 36px 20px;
+    border-top: 1px solid #e8e8e8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    position: relative;
+  }
+
+  .nav-pill {
+    display: flex;
+    align-items: center;
+    background: #1a1a1a;
+    border-radius: 999px;
+    overflow: hidden;
+    gap: 0;
+  }
+
+  .nav-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    padding: 10px 18px;
+    cursor: pointer;
+    transition: background 0.15s;
+    line-height: 1;
+  }
+
+  .nav-btn:hover { background: #333; }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+
+  .nav-counter {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    padding: 10px 4px;
+    min-width: 58px;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .restart-btn {
+    position: absolute;
+    right: 36px;
+    background: #1a1a1a;
+    border: none;
+    color: #fff;
+    border-radius: 999px;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+    font-family: 'Inter', sans-serif;
+  }
+  .restart-btn:hover { background: #333; }
+
+  /* Results screen */
+  #resultsScreen {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 36px;
+    text-align: center;
+  }
+
+  .result-score {
+    font-size: 72px;
+    font-weight: 900;
+    color: #111;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .result-label {
+    font-size: 16px;
+    color: #888;
+    margin-bottom: 32px;
+    font-weight: 500;
+  }
+
+  .result-msg {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+
+  .result-sub {
+    font-size: 15px;
+    color: #666;
+    margin-bottom: 40px;
+  }
+
+  /* Review accordion */
+  .review-list {
+    width: 100%;
+    max-width: 700px;
+    text-align: left;
+    display: grid;
+    gap: 10px;
+    margin-bottom: 36px;
+    max-height: 420px;
+    overflow-y: auto;
+  }
+
+  .review-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .review-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 16px;
+  }
+
+  .review-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 1px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 800;
+  }
+  .review-dot.ok  { background: #2d9e5f; }
+  .review-dot.bad { background: #d94040; }
+
+  .review-q-text { font-size: 13px; color: #555; margin-bottom: 3px; }
+  .review-verdict { font-size: 13px; font-weight: 700; }
+  .review-verdict.ok  { color: #2d9e5f; }
+  .review-verdict.bad { color: #d94040; }
+
+  .review-exp {
+    padding: 10px 16px 14px;
+    border-top: 1px solid #eee;
+    background: #fafafa;
+    font-size: 12.5px;
+    color: #555;
+    line-height: 1.65;
+  }
+
+  .review-exp-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #aaa;
+    margin-bottom: 4px;
+  }
+
+  .res-restart {
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 13px 36px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: background 0.15s;
+  }
+  .res-restart:hover { background: #333; }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 640px) {
+    .main { flex-direction: column; padding: 24px 20px; gap: 24px; }
+    .question-panel { width: 100%; }
+    .options-grid { grid-template-columns: 1fr; }
+    .topbar, .bottombar { padding-left: 20px; padding-right: 20px; }
+    .restart-btn { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Quiz Time</h1>
+</div>
+
+<!-- Quiz screen -->
+<div id="quizScreen" style="display:flex; flex:1; flex-direction:column;">
+  <div class="main">
+    <div class="question-panel">
+      <h2 id="qLabel">Question 1</h2>
+      <p id="qText"></p>
+    </div>
+    <div class="right-panel">
+      <div class="options-grid" id="optionsGrid"></div>
+      <div class="explanation-strip" id="explanationStrip">
+        <div class="exp-label">Explanation</div>
+        <div class="exp-text" id="expText"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottombar">
+    <div class="nav-pill">
+      <button class="nav-btn" id="prevBtn" onclick="prevQ()" disabled>&#8249;</button>
+      <span class="nav-counter" id="navCounter">1 / 10</span>
+      <button class="nav-btn" id="nextBtn" onclick="nextQ()">&#8250;</button>
+    </div>
+    <button class="restart-btn" onclick="restart()">&#8635; Restart</button>
+  </div>
+</div>
+
+<!-- Results screen -->
+<div id="resultsScreen">
+  <div class="result-score" id="resScore">0</div>
+  <div class="result-label" id="resLabel">out of 10</div>
+  <div class="result-msg" id="resMsg"></div>
+  <div class="result-sub" id="resSub"></div>
+  <div class="review-list" id="reviewList"></div>
+  <button class="res-restart" onclick="restart()">↺ Try Again</button>
+</div>
+
+<script>
+const questions = [
+  {
+    q: 'Which statement correctly represents: "All students study"?',
+    opts: [
+      "∃x (Student(x) ∧ Studies(x))",
+      "∀x (Student(x) → Studies(x))",
+      "∀x (Student(x) ∧ Studies(x))",
+      "∃x (Student(x) → Studies(x))"
+    ],
+    answer: 1,
+    explanation: '"All" requires the universal quantifier ∀, and implication (→) ensures that only those who are students must study. Using ∧ would incorrectly say everyone is both a student and studies.'
+  },
+  {
+    q: 'Which statement correctly represents: "Some students study"?',
+    opts: [
+      "∀x (Student(x) → Studies(x))",
+      "∃x (Student(x) ∧ Studies(x))",
+      "∃x (Student(x) → Studies(x))",
+      "∀x (Student(x) ∧ Studies(x))"
+    ],
+    answer: 1,
+    explanation: '"Some" means at least one, so we use ∃. The AND (∧) ensures that the same individual is both a student and studies.'
+  },
+  {
+    q: 'Which statement correctly represents: "No students study"?',
+    opts: [
+      "∀x (Student(x) → ¬Studies(x))",
+      "∃x (Student(x) ∧ ¬Studies(x))",
+      "∀x (Student(x) ∧ ¬Studies(x))",
+      "∃x (Student(x) → Studies(x))"
+    ],
+    answer: 0,
+    explanation: '"No students study" means every student does not study, which is expressed using ∀ and implication. Option C is too strong—it says everyone is a student.'
+  },
+  {
+    q: 'Which statement correctly represents: "Not all students study"?',
+    opts: [
+      "∀x (Student(x) → Studies(x))",
+      "∃x (Student(x) ∧ ¬Studies(x))",
+      "∀x (Student(x) ∧ ¬Studies(x))",
+      "∃x (Student(x) → Studies(x))"
+    ],
+    answer: 1,
+    explanation: '"Not all" means there is at least one exception. So we express that there exists a student who does not study.'
+  },
+  {
+    q: 'Which statement correctly represents: "All humans are mortal"?',
+    opts: [
+      "∃x (Human(x) → Mortal(x))",
+      "∀x (Human(x) → Mortal(x))",
+      "∀x (Mortal(x) → Human(x))",
+      "∃x (Human(x) ∧ Mortal(x))"
+    ],
+    answer: 1,
+    explanation: 'The universal quantifier ∀ captures "all". The implication ensures that being human guarantees being mortal.'
+  },
+  {
+    q: 'Which statement correctly represents: "Some humans are not mortal"?',
+    opts: [
+      "∀x (Human(x) → Mortal(x))",
+      "∃x (Human(x) ∧ ¬Mortal(x))",
+      "∀x (Human(x) ∧ ¬Mortal(x))",
+      "∃x (Human(x) → ¬Mortal(x))"
+    ],
+    answer: 1,
+    explanation: '"Some" requires ∃, and we combine Human(x) with ¬Mortal(x) using ∧ to show both conditions apply to the same individual.'
+  },
+  {
+    q: 'Which statement correctly represents: "Every teacher teaches some course"?',
+    opts: [
+      "∀x (Teacher(x) → ∀y Teaches(x, y))",
+      "∃x ∃y Teaches(x, y)",
+      "∀x (Teacher(x) → ∃y Teaches(x, y))",
+      "∃y (Teacher(y) → Teaches(y, x))"
+    ],
+    answer: 2,
+    explanation: 'For each teacher (∀x), there exists at least one course (∃y) that they teach. This correctly captures the dependency between teacher and course.'
+  },
+  {
+    q: 'Which statement correctly represents: "Some teachers teach all courses"?',
+    opts: [
+      "∃x (Teacher(x) → ∀y Teaches(x, y))",
+      "∃x (Teacher(x) ∧ ∀y Teaches(x, y))",
+      "∀x (Teacher(x) → ∃y Teaches(x, y))",
+      "∀x ∀y Teaches(x, y)"
+    ],
+    answer: 1,
+    explanation: 'There exists at least one teacher who teaches every course. The AND (∧) ensures that the same individual is a teacher and satisfies the condition.'
+  },
+  {
+    q: 'Which statement correctly represents: "Every student likes some subject"?',
+    opts: [
+      "∀x (Student(x) → ∃y Likes(x, y))",
+      "∃x ∀y Likes(x, y)",
+      "∀x ∀y Likes(x, y)",
+      "∃y (Student(y) → Likes(y, x))"
+    ],
+    answer: 0,
+    explanation: 'For each student, there exists at least one subject they like. This correctly uses ∀ for students and ∃ for subjects.'
+  },
+  {
+    q: 'Which statement correctly represents: "There is a student who likes every subject"?',
+    opts: [
+      "∀x (Student(x) → ∀y Likes(x, y))",
+      "∃x (Student(x) ∧ ∀y Likes(x, y))",
+      "∀x ∃y Likes(x, y)",
+      "∃y ∀x Likes(x, y)"
+    ],
+    answer: 1,
+    explanation: 'This means one specific student exists who likes all subjects. The existential quantifier applies to the student, and the universal quantifier applies to all subjects.'
+  }
+];
+
+const letters = ['A','B','C','D'];
+let current = 0;
+let userAnswers = new Array(questions.length).fill(null); // null = unanswered
+
+function render() {
+  const q = questions[current];
+  document.getElementById('qLabel').textContent = `Question ${current + 1}`;
+  document.getElementById('qText').textContent = q.q;
+  document.getElementById('navCounter').textContent = `${current + 1} / ${questions.length}`;
+  document.getElementById('prevBtn').disabled = current === 0;
+  document.getElementById('nextBtn').textContent = current === questions.length - 1 ? '›' : '›';
+
+  const grid = document.getElementById('optionsGrid');
+  grid.innerHTML = '';
+
+  q.opts.forEach((opt, i) => {
+    const card = document.createElement('div');
+    card.className = 'option-card';
+    card.innerHTML = `<div class="letter">${letters[i]}</div><div class="text">${opt}</div>`;
+
+    const chosen = userAnswers[current];
+    if (chosen !== null) {
+      // Already answered — restore state
+      card.classList.add('locked');
+      if (i === q.answer) card.classList.add('correct');
+      else if (i === chosen) card.classList.add('wrong');
+    } else {
+      card.onclick = () => select(i);
+    }
+
+    grid.appendChild(card);
+  });
+
+  // Explanation
+  const strip = document.getElementById('explanationStrip');
+  const expText = document.getElementById('expText');
+  const chosen = userAnswers[current];
+  if (chosen !== null) {
+    expText.textContent = q.explanation;
+    strip.className = 'explanation-strip show ' + (chosen === q.answer ? 'correct-strip' : 'wrong-strip');
+  } else {
+    strip.className = 'explanation-strip';
+  }
+}
+
+function select(idx) {
+  if (userAnswers[current] !== null) return;
+  userAnswers[current] = idx;
+  render();
+}
+
+function prevQ() {
+  if (current > 0) { current--; render(); }
+}
+
+function nextQ() {
+  if (current < questions.length - 1) { current++; render(); }
+  else showResults();
+}
+
+function showResults() {
+  document.getElementById('quizScreen').style.display = 'none';
+  const rs = document.getElementById('resultsScreen');
+  rs.style.display = 'flex';
+
+  const score = userAnswers.filter((a, i) => a === questions[i].answer).length;
+  document.getElementById('resScore').textContent = score;
+  document.getElementById('resLabel').textContent = `out of ${questions.length}`;
+
+  const pct = score / questions.length;
+  let msg, sub;
+  if (pct === 1)       { msg = 'Perfect Score! 🎉'; sub = 'You nailed every question.'; }
+  else if (pct >= 0.8) { msg = 'Excellent Work!';   sub = 'Almost perfect — great effort.'; }
+  else if (pct >= 0.6) { msg = 'Good Effort';       sub = 'A few gaps to review.'; }
+  else                 { msg = 'Keep Studying';      sub = 'Check the explanations and try again.'; }
+
+  document.getElementById('resMsg').textContent = msg;
+  document.getElementById('resSub').textContent = sub;
+
+  const list = document.getElementById('reviewList');
+  list.innerHTML = '';
+  questions.forEach((q, i) => {
+    const ok = userAnswers[i] === q.answer;
+    const unanswered = userAnswers[i] === null;
+    const div = document.createElement('div');
+    div.className = 'review-item';
+    div.innerHTML = `
+      <div class="review-top">
+        <div class="review-dot ${ok ? 'ok' : 'bad'}">${ok ? '✓' : '✗'}</div>
+        <div style="flex:1">
+          <div class="review-q-text">Q${i+1}: ${q.q}</div>
+          <div class="review-verdict ${ok ? 'ok' : 'bad'}">${ok
+            ? 'Correct'
+            : unanswered
+              ? `Not answered · Correct: ${letters[q.answer]}`
+              : `You chose ${letters[userAnswers[i]]} · Correct: ${letters[q.answer]}`
+          }</div>
+        </div>
+      </div>
+      <div class="review-exp">
+        <div class="review-exp-label">Explanation</div>
+        ${q.explanation}
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+function restart() {
+  current = 0;
+  userAnswers = new Array(questions.length).fill(null);
+  document.getElementById('resultsScreen').style.display = 'none';
+  document.getElementById('quizScreen').style.display = 'flex';
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
